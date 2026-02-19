@@ -26,7 +26,7 @@ Built using **Rust** for the core engine and **Tauri** for a lightweight, native
 ## Tech Stack
 
 * **Backend:** [Rust](https://www.rust-lang.org/) (Core Logic & Tauri)
-* **Frontend:** [React](https://reactjs.org/) + TypeScript
+* **Frontend:** [React](https://reactjs.org/)
 * **Desktop Framework:** [Tauri](https://tauri.app/) (v2.0)
 * **Communication:** Custom Protocol Handler (`jda://`)
 * **Storage:** `chrome.storage` (Extension side) & Local JSON (App side)
