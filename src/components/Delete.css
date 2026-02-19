@@ -1,0 +1,46 @@
+.Delete{
+    height: max-content;
+    width: max-content;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    padding: 20px;
+    border-radius: 10px;
+    user-select: none;
+    border: 1px solid gray;
+    
+}
+
+.Delete-Button {
+    border-radius: 10px;
+    width: min-content;
+    height: 20px;
+    padding: 5px;
+    cursor: pointer;
+    display: inline;
+    min-width: 60px;
+    text-align: center;
+    align-content: center;
+}
+
+.Delete-Button:hover {
+    background-color: rgb(122, 195, 255);;
+}
+
+.Delete-Row {
+    display: flex;
+    flex-direction: row;
+    height: max-content;
+    margin: 15px;
+    gap: 30px;
+    align-items: center;
+}
+
+.Delete-Last {
+    display: flex;
+    border-top: 2px groove rgb(70, 70, 70);
+    padding-top: 15px;
+    justify-content: end;
+    gap: 10px;
+}
