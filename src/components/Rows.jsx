@@ -17,7 +17,7 @@ function Rows({element, selectedTab, repairTargetId, setRepairTargetId, repairSt
     const textRef = useRef();
     const selector = element.is_selected ? "Row Row-Selected" : "Row";
     const chks = element.is_selected ? "Chk Chk-Selected" : "Chk";
-    const inputEditable = editable ? "Info-Link-Text Editable" : "Info-Link-Text";
+    const inputEditable = editable ? "Info-Link-Text Editable" : "Info-Link-Text-E";
 
     async function selectRow(id){
         invoke("toggle_one", { id });
