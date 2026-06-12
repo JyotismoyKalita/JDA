@@ -50,7 +50,13 @@ function Rows({element, selectedTab}){
         }
         setValidity("checking");
         const url = textRef.current.value.trim();
-        const info = await invoke('verify_url', {url: url}).catch(()=>null);
+        const info = await invoke('verify_url', {
+            url: url,
+            cookies: element.cookies || null,
+            userAgent: element.user_agent || null,
+            referer: element.referer || null,
+            headers: element.headers || {}
+        }).catch(()=>null);
         if(!info){
             setValidity("invalid");
             return;

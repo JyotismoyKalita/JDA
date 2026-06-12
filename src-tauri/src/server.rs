@@ -6,6 +6,7 @@ use axum::{
     http::Method,
 };
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::net::SocketAddr;
 use tauri::{AppHandle, Manager, Emitter};
 use tower_http::cors::{Any, CorsLayer};
@@ -17,8 +18,11 @@ pub struct DownloadPayload {
     pub size: u64,
     pub resume: String,
     pub cookie: String,
-    pub userAgent: String,
+    #[serde(rename = "userAgent")]
+    pub user_agent: String,
     pub referer: String,
+    #[serde(default)]
+    pub headers: HashMap<String, String>,
 }
 
 pub fn spawn_local_server(app_handle: AppHandle) {

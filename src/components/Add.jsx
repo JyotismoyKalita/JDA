@@ -15,6 +15,7 @@ function Add({setAddScreen, txt, setTxt, serverPayload}){
     const [cookies, setCookies] = useState("");
     const [userAgent, setUserAgent] = useState("");
     const [referer, setReferer] = useState("");
+    const [requestHeaders, setRequestHeaders] = useState({});
 
     const linkRef = useRef();
     const nameRef = useRef();
@@ -29,13 +30,14 @@ function Add({setAddScreen, txt, setTxt, serverPayload}){
         el.focus();
     }
 
-    async function verify(explicitCookies = undefined, explicitUserAgent = undefined, explicitReferer = undefined) {
+    async function verify(explicitCookies = undefined, explicitUserAgent = undefined, explicitReferer = undefined, explicitHeaders = undefined) {
         verifyRef.current.style.backgroundColor = "grey";
         const info = await invoke("verify_url", {
             url: linkRef.current.value.trim(),
             cookies: explicitCookies !== undefined ? explicitCookies : (cookies.length > 0 ? cookies : null),
             userAgent: explicitUserAgent !== undefined ? explicitUserAgent : (userAgent.length > 0 ? userAgent : null),
-            referer: explicitReferer !== undefined ? explicitReferer : (referer.length > 0 ? referer : null)
+            referer: explicitReferer !== undefined ? explicitReferer : (referer.length > 0 ? referer : null),
+            headers: explicitHeaders !== undefined ? explicitHeaders : requestHeaders
         }).catch((err)=>{
             verifyRef.current.style.backgroundColor = "";
             return null;
@@ -90,9 +92,11 @@ function Add({setAddScreen, txt, setTxt, serverPayload}){
             state: state,
             is_selected: false,
             connections: Array(1).fill(0),
+            parts: [],
             cookies: cookies.length > 0 ? cookies : null,
             user_agent: userAgent.length > 0 ? userAgent : null,
-            referer: referer.length > 0 ? referer : null
+            referer: referer.length > 0 ? referer : null,
+            headers: requestHeaders
         }
 
         await invoke("add_download", {
@@ -110,12 +114,18 @@ function Add({setAddScreen, txt, setTxt, serverPayload}){
         if (serverPayload) {
             setTimeout(() => {
                 const newReferer = serverPayload.referer || "";
+                const newCookies = serverPayload.cookie || "";
+                const newUserAgent = serverPayload.userAgent || "";
+                const newHeaders = serverPayload.headers || {};
 
                 if (linkRef.current) linkRef.current.value = serverPayload.url || "";
                 if (nameRef.current) nameRef.current.value = serverPayload.name || "";
                 setSize(serverPayload.size || 0);
                 setResumeSupported(serverPayload.resume === "true");
+                setCookies(newCookies);
+                setUserAgent(newUserAgent);
                 setReferer(newReferer);
+                setRequestHeaders(newHeaders);
                 
                 if (serverPayload.resume !== "true") {
                     if (maxConnectionRef.current) {
@@ -134,7 +144,7 @@ function Add({setAddScreen, txt, setTxt, serverPayload}){
                 }
 
                 if (serverPayload.url) {
-                    verify(serverPayload.cookie, serverPayload.userAgent, serverPayload.referer);
+                    verify(newCookies, newUserAgent, newReferer, newHeaders);
                 }
             }, 100);
             return;
@@ -153,6 +163,7 @@ function Add({setAddScreen, txt, setTxt, serverPayload}){
 
                 const cookieStr = params.get("cookie") || "";
                 const uaStr = params.get("userAgent") || "";
+                const refererStr = params.get("referer") || "";
 
                 setTimeout(() => {
                     if (linkRef.current) linkRef.current.value = cleanUrl;
@@ -161,8 +172,10 @@ function Add({setAddScreen, txt, setTxt, serverPayload}){
                     setResumeSupported(resume);
                     setCookies(cookieStr);
                     setUserAgent(uaStr);
+                    setReferer(refererStr);
+                    setRequestHeaders({});
                     if (cleanUrl) {
-                        verify();
+                        verify(cookieStr, uaStr, refererStr, {});
                     }
                     setTxt(""); 
                 }, 100);

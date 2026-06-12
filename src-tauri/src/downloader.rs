@@ -3,11 +3,12 @@ use std::sync::atomic::{AtomicUsize, AtomicU64, Ordering};
 use std::sync::{Arc, RwLock};
 use reqwest::Client;
 use tokio::sync::Notify;
-use tokio::time::{Duration, Instant};
+use tokio::time::Instant;
 use tokio::io::{AsyncWriteExt, AsyncSeekExt, BufWriter};
 
 use crate::models::{DownloadState, ActivePart};
 use crate::state::broadcast;
+use crate::utils::apply_browser_headers;
 
 fn get_next_part(
     state: &Arc<DownloadState>,
@@ -124,6 +125,45 @@ fn get_next_part(
     None
 }
 
+fn release_part_after_initial_failure(
+    state: &Arc<DownloadState>,
+    download_id: &str,
+    worker_index: usize,
+    part_index: usize,
+    active_parts_lock: &Arc<RwLock<Vec<ActivePart>>>,
+) {
+    active_parts_lock.write().unwrap().retain(|ap| ap.part_index != part_index);
+
+    if let Ok(mut list) = state.list.write() {
+        if let Some(d) = list.iter_mut().find(|d| d.id == download_id) {
+            if d.speeds.len() > worker_index {
+                d.speeds[worker_index] = 0;
+            }
+            d.speed = d.speeds.iter().sum();
+
+            if part_index < d.parts.len() && d.parts[part_index].downloaded == 0 {
+                let p_start = d.parts[part_index].start;
+                let p_end = d.parts[part_index].end;
+
+                if p_start != u64::MAX {
+                    let active = active_parts_lock.read().unwrap();
+                    if let Some(prev_idx) = d.parts.iter().position(|p| p.end == p_start.saturating_sub(1)) {
+                        if let Some(active_prev) = active.iter().find(|ap| ap.part_index == prev_idx) {
+                            let prev_pos = active_prev.current_pos.load(Ordering::Relaxed);
+                            if prev_pos <= p_start {
+                                d.parts[prev_idx].end = p_end;
+                                active_prev.end.store(p_end, Ordering::Relaxed);
+                                d.parts[part_index].start = u64::MAX;
+                                d.parts[part_index].end = u64::MAX;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 pub async fn worker(
     worker_index: usize,
     download_id: String,
@@ -172,14 +212,6 @@ pub async fn worker(
 
     let mut writer = BufWriter::with_capacity(4 * 1024 * 1024, file);
 
-    let session_start = Instant::now();
-    let mut previously_accumulated = 0;
-    if let Ok(list) = state.list.read() {
-        if let Some(d) = list.iter().find(|d| d.id == download_id) {
-            previously_accumulated = d.elapsed;
-        }
-    }
-
     let mut has_started_transfer = false;
     let mut chunks_completed = 0;
 
@@ -193,16 +225,16 @@ pub async fn worker(
         let mut pos = start_byte + current_offset;
         let mut retries = 0;
         const MAX_RETRIES: u32 = 100;
-        let (cookies, user_agent, referer) = {
+        let (cookies, user_agent, referer, browser_headers) = {
             let list = state.list.read().unwrap();
             if let Some(d) = list.iter().find(|d| d.id == download_id) {
-                (d.cookies.clone(), d.user_agent.clone(), d.referer.clone())
+                (d.cookies.clone(), d.user_agent.clone(), d.referer.clone(), d.headers.clone())
             } else {
-                (None, None, None)
+                (None, None, None, Default::default())
             }
         };
 
-        let mut success = false;
+        let mut success: bool;
         let mut unsynced_bytes: u64 = 0;
         'retry_loop: loop {
             success = false;
@@ -221,7 +253,8 @@ pub async fn worker(
                 format!("bytes={}-", pos)
             };
 
-            let mut req = client.get(&url).header("Range", &range_header);
+            let mut req = apply_browser_headers(client.get(&url), &browser_headers)
+                .header("Range", &range_header);
             if let Some(c) = &cookies { req = req.header(reqwest::header::COOKIE, c); }
             if let Some(ua) = &user_agent {
                 req = req.header(reqwest::header::USER_AGENT, ua);
@@ -238,29 +271,13 @@ pub async fn worker(
                 Err(e) => {
                     println!("Worker {} req.send error: {}", worker_index, e);
                     if chunks_completed == 0 && !has_started_transfer {
-                        active_parts_lock.write().unwrap().retain(|ap| ap.part_index != part_index);
-                        if let Ok(mut list) = state.list.write() {
-                            if let Some(d) = list.iter_mut().find(|d| d.id == download_id) {
-                                if d.speeds.len() > worker_index { d.speeds[worker_index] = 0; }
-                                d.speed = d.speeds.iter().sum();
-                                if part_index < d.parts.len() {
-                                    let p_start = d.parts[part_index].start;
-                                    let p_end = d.parts[part_index].end;
-                                    if d.parts[part_index].downloaded == 0 {
-                                        if let Some(prev_idx) = d.parts.iter().position(|p| p.end == p_start.saturating_sub(1)) {
-                                            d.parts[prev_idx].end = p_end;
-                                            let active = active_parts_lock.read().unwrap();
-                                            if let Some(active_prev) = active.iter().find(|ap| ap.part_index == prev_idx) {
-                                                active_prev.end.store(p_end, Ordering::Relaxed);
-                                            }
-                                        }
-                                        d.parts[part_index].start = u64::MAX;
-                                        d.parts[part_index].end = u64::MAX;
-                                        d.parts[part_index].downloaded = 0;
-                                    }
-                                }
-                            }
-                        }
+                        release_part_after_initial_failure(
+                            &state,
+                            &download_id,
+                            worker_index,
+                            part_index,
+                            &active_parts_lock,
+                        );
                         break 'part_loop;
                     } else {
                         if retries < MAX_RETRIES { retries += 1; continue 'retry_loop; }
@@ -301,38 +318,14 @@ pub async fn worker(
                 } else {
                     let _ = resp.bytes().await; // Consume body
                 }
-                active_parts_lock.write().unwrap().retain(|ap| ap.part_index != part_index); // Release part
-                
                 if chunks_completed == 0 && !has_started_transfer {
-                    if let Ok(mut list) = state.list.write() {
-                        if let Some(d) = list.iter_mut().find(|d| d.id == download_id) {
-                            if d.speeds.len() > worker_index { d.speeds[worker_index] = 0; }
-                            d.speed = d.speeds.iter().sum();
-                            
-                            // MERGE logic for dynamic chunking:
-                            // If an excess worker dies, recombine the part so the UI doesn't show 8 parts for 2 active workers!
-                            if part_index < d.parts.len() {
-                                let p_start = d.parts[part_index].start;
-                                let p_end = d.parts[part_index].end;
-                                
-                                if d.parts[part_index].downloaded == 0 {
-                                    if let Some(prev_idx) = d.parts.iter().position(|p| p.end == p_start.saturating_sub(1)) {
-                                        d.parts[prev_idx].end = p_end;
-                                        // Update active part if the adjacent part is running
-                                        let active = active_parts_lock.read().unwrap();
-                                        if let Some(active_prev) = active.iter().find(|ap| ap.part_index == prev_idx) {
-                                            active_prev.end.store(p_end, Ordering::Relaxed);
-                                        }
-                                    }
-                                    
-                                    // Mark as dead (1 to 0) so is_actually_done ignores it and UI hides it
-                                    d.parts[part_index].start = u64::MAX;
-                                    d.parts[part_index].end = u64::MAX;
-                                    d.parts[part_index].downloaded = 0;
-                                }
-                            }
-                        }
-                    }
+                    release_part_after_initial_failure(
+                        &state,
+                        &download_id,
+                        worker_index,
+                        part_index,
+                        &active_parts_lock,
+                    );
                     break 'part_loop; // Excess worker dies permanently
                 } else {
                     if retries < MAX_RETRIES {
@@ -365,6 +358,11 @@ pub async fn worker(
 
             'stream_loop: loop {
                 let end_byte = end_atomic.load(Ordering::Relaxed);
+                if end_byte > 0 && pos > end_byte {
+                    success = true;
+                    break 'retry_loop;
+                }
+
                 tokio::select! {
                     _ = notify.notified() => {
                         let _ = writer.flush().await;
@@ -373,6 +371,12 @@ pub async fn worker(
                     res = stream.next() => {
                         match res {
                             Some(Ok(chunk)) => {
+                                let end_byte = end_atomic.load(Ordering::Relaxed);
+                                if end_byte > 0 && pos > end_byte {
+                                    success = true;
+                                    break 'retry_loop;
+                                }
+
                                 let mut len = chunk.len() as u64;
                                 
                                 // Prevent overwriting if we hit dynamic end_byte

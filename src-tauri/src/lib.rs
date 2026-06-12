@@ -15,11 +15,10 @@ use tauri::{
     Manager, Emitter
 };
 
-use reqwest::Client;
 use tauri_plugin_deep_link::DeepLinkExt;
 
 use models::DownloadState;
-use state::{save_state, load_state};
+use state::save_state;
 use commands::*;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -81,18 +80,6 @@ pub fn run() {
                         }
                     }
 
-                    if d.parts.is_empty() && !d.connections.is_empty() {
-                        let mut parts = Vec::new();
-                        for i in 0..d.connections.len() {
-                            let (start, end) = crate::utils::range_for(d.total, d.connections.len(), i);
-                            parts.push(crate::models::Part {
-                                start,
-                                end,
-                                downloaded: d.connections[i],
-                            });
-                        }
-                        d.parts = parts;
-                    }
                 }
                 *state.list.write().unwrap() = loaded;
             }

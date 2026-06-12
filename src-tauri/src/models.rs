@@ -35,23 +35,19 @@ pub struct Download {
     pub state: String,
     pub is_selected: bool,
 
-    #[serde(default)]
     pub connections: Vec<u64>,
 
-    #[serde(default)]
     pub parts: Vec<Part>,
 
-    #[serde(default)]
     pub speeds: Vec<u64>,
 
-    #[serde(default)]
     pub cookies: Option<String>,
 
-    #[serde(default)]
     pub user_agent: Option<String>,
 
-    #[serde(default)]
     pub referer: Option<String>,
+
+    pub headers: HashMap<String, String>,
 }
 
 pub struct ActivePart {

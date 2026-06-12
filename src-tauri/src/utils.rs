@@ -1,17 +1,36 @@
-pub fn range_for(total: u64, parts: usize, i: usize) -> (u64, u64) {
-    if total == 0 {
-        return (0, 0);
+use std::collections::HashMap;
+
+use reqwest::RequestBuilder;
+
+const SKIPPED_REQUEST_HEADERS: &[&str] = &[
+    "host",
+    "connection",
+    "content-length",
+    "accept-encoding",
+    "range",
+];
+
+pub fn apply_browser_headers(
+    mut req: RequestBuilder,
+    headers: &HashMap<String, String>,
+) -> RequestBuilder {
+    for (name, value) in headers {
+        let lower_name = name.to_ascii_lowercase();
+        if value.is_empty() || SKIPPED_REQUEST_HEADERS.contains(&lower_name.as_str()) {
+            continue;
+        }
+
+        let Ok(header_name) = reqwest::header::HeaderName::from_bytes(lower_name.as_bytes()) else {
+            continue;
+        };
+        let Ok(header_value) = reqwest::header::HeaderValue::from_str(value) else {
+            continue;
+        };
+
+        req = req.header(header_name, header_value);
     }
 
-    let chunk = total / parts as u64;
-    let start = i as u64 * chunk;
-    let end = if i == parts - 1 {
-        total - 1
-    } else {
-        start + chunk - 1
-    };
-
-    (start, end)
+    req
 }
 
 pub fn parse_filename(header: &str) -> Option<String> {

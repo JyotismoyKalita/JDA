@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::sync::{Arc, atomic::AtomicUsize};
 use std::path::Path;
 use tauri::ipc::Channel;
@@ -6,7 +7,7 @@ use std::process::Command;
 use tauri::Manager;
 
 use crate::models::{DownloadState, Download, UrlInfo, ActiveTask};
-use crate::utils::{range_for, parse_filename, extension_from_mime};
+use crate::utils::{parse_filename, extension_from_mime, apply_browser_headers};
 use crate::state::broadcast;
 use crate::downloader::worker;
 use tauri_plugin_dialog::DialogExt;
@@ -110,7 +111,9 @@ pub async fn resume_download(
 
     let final_path = Path::new(&download.location).join(&download.name);
     
-    if download.total > 0 && download.parts.iter().all(|p| p.downloaded >= (p.end - p.start + 1)) {
+    if download.total > 0 && download.parts.iter()
+        .filter(|p| p.start != u64::MAX)
+        .all(|p| p.downloaded >= (p.end - p.start + 1)) {
         if temp_path.exists() {
             let _ = tokio::fs::rename(&temp_path, &final_path).await;
         }
@@ -317,13 +320,16 @@ pub async fn verify_url(
     cookies: Option<String>,
     user_agent: Option<String>,
     referer: Option<String>,
+    headers: Option<HashMap<String, String>>,
 ) -> Result<Option<UrlInfo>, String> {
     let state = (*state).clone();
     
     let client = &state.client; 
     let parsed = url::Url::parse(&url).map_err(|e| e.to_string())?;
 
-    let mut head_req = client.head(parsed.to_string());
+    let browser_headers = headers.unwrap_or_default();
+
+    let mut head_req = apply_browser_headers(client.head(parsed.to_string()), &browser_headers);
     if let Some(c) = &cookies { head_req = head_req.header(reqwest::header::COOKIE, c); }
     if let Some(ua) = &user_agent { head_req = head_req.header(reqwest::header::USER_AGENT, ua); }
     if let Some(ref_str) = &referer { head_req = head_req.header(reqwest::header::REFERER, ref_str); }
@@ -335,7 +341,7 @@ pub async fn verify_url(
     let mut final_url = parsed.clone();
 
     if let Ok(resp) = &head_resp {
-        let status = resp.status();
+        let _status = resp.status();
     }
 
     if let Ok(resp) = head_resp {
@@ -361,7 +367,8 @@ pub async fn verify_url(
         }
     }
 
-    let mut probe_req = client.get(parsed.to_string()).header(reqwest::header::RANGE, "bytes=0-");
+    let mut probe_req = apply_browser_headers(client.get(parsed.to_string()), &browser_headers)
+        .header(reqwest::header::RANGE, "bytes=0-");
     if let Some(c) = &cookies { probe_req = probe_req.header(reqwest::header::COOKIE, c); }
     if let Some(ua) = &user_agent {
         probe_req = probe_req.header(reqwest::header::USER_AGENT, ua);
@@ -580,4 +587,3 @@ pub fn remove_download(state: tauri::State<Arc<DownloadState>>, id: String) {
     drop(list);
     broadcast(&state);
 }
-
