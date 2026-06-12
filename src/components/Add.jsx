@@ -7,10 +7,13 @@ import { useState, useEffect } from 'react';
 import {formatSize} from '../utils/format'
 
 
-function Add({setAddScreen, txt, setTxt}){
+function Add({setAddScreen, txt, setTxt, serverPayload}){
 
     const [resumeSupported, setResumeSupported] = useState(false);
     const [size, setSize] = useState(0);
+    const [cookies, setCookies] = useState("");
+    const [userAgent, setUserAgent] = useState("");
+    const [referer, setReferer] = useState("");
 
     const linkRef = useRef();
     const nameRef = useRef();
@@ -27,7 +30,12 @@ function Add({setAddScreen, txt, setTxt}){
 
     async function verify() {
         verifyRef.current.style.backgroundColor = "grey";
-        const info = await invoke("verify_url", {url: linkRef.current.value.trim()}).catch(()=>{
+        const info = await invoke("verify_url", {
+            url: linkRef.current.value.trim(),
+            cookies: cookies.length > 0 ? cookies : null,
+            userAgent: userAgent.length > 0 ? userAgent : null,
+            referer: referer.length > 0 ? referer : null
+        }).catch(()=>{
             verifyRef.current.style.backgroundColor = "";
         });
         if(!info){
@@ -80,7 +88,10 @@ function Add({setAddScreen, txt, setTxt}){
             speeds: Array(Number(threads)).fill(0),
             state: state,
             is_selected: false,
-            connections: Array(Number(threads)).fill(0)
+            connections: Array(1).fill(0),
+            cookies: cookies.length > 0 ? cookies : null,
+            user_agent: userAgent.length > 0 ? userAgent : null,
+            referer: referer.length > 0 ? referer : null
         }
 
         await invoke("add_download", {
@@ -93,24 +104,48 @@ function Add({setAddScreen, txt, setTxt}){
     }
 
     useEffect(() => {
+        if (serverPayload) {
+            setTimeout(() => {
+                if (linkRef.current) linkRef.current.value = serverPayload.url || "";
+                if (nameRef.current) nameRef.current.value = serverPayload.name || "";
+                setSize(serverPayload.size || 0);
+                setResumeSupported(serverPayload.resume === "true");
+                setCookies(serverPayload.cookie || "");
+                setUserAgent(serverPayload.userAgent || "");
+                setReferer(serverPayload.referer || "");
+                if (serverPayload.url) {
+                    verify();
+                }
+            }, 100);
+            return;
+        }
+
         if (txt && txt.includes('?')) {
             try {
                 const queryString = txt.split('?')[1];
                 
                 const params = new URLSearchParams(queryString);
 
-                const cleanUrl = decodeURIComponent(params.get("url") || "");
-                const fileName = decodeURIComponent(params.get("name") || "");
+                const cleanUrl = params.get("url") || "";
+                const fileName = params.get("name") || "";
                 const fileSize = parseInt(params.get("size") || "0");
                 const resume = params.get("resume") === "true";
+
+                const cookieStr = params.get("cookie") || "";
+                const uaStr = params.get("userAgent") || "";
 
                 setTimeout(() => {
                     if (linkRef.current) linkRef.current.value = cleanUrl;
                     if (nameRef.current) nameRef.current.value = fileName;
                     setSize(fileSize);
                     setResumeSupported(resume);
+                    setCookies(cookieStr);
+                    setUserAgent(uaStr);
+                    if (cleanUrl) {
+                        verify();
+                    }
                     setTxt(""); 
-                }, 0);
+                }, 100);
 
             } catch (e) {
                 console.error("Parsing failed:", e);

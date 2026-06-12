@@ -135,7 +135,7 @@ function Rows({element, selectedTab}){
                             <div className='Row-Middle'>{element.state=="Downloading" ? `Speed: ${formatSize(element.speed)}/s` : `Status: ${element.state}`}</div>
                             <div className='Row-End'>{`ETA: ${eta()} | Elapsed: ${element.elapsed}`}</div>
                         </div>
-                        <Progress connections={element.connections} total={element.total }/>
+                        <Progress parts={element.parts} total={element.total }/>
                     </div>
                 }
                 {
@@ -155,7 +155,7 @@ function Rows({element, selectedTab}){
                         <div>
                             Elapsed: {formatTime(element.elapsed)}
                         </div>
-                        <div>Connections: {element.connections.length}</div>
+                        <div>Chunks: {element.parts ? element.parts.length : 0}</div>
                         <div className='Info-Link'>           
                             <div>Link:</div>
                             <input type="url" defaultValue={element.link} disabled={!editable} className={inputEditable} ref={textRef}/>

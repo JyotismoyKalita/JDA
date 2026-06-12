@@ -9,8 +9,6 @@ function TabBar({items, selectTab, data}){
 
     const counts = useMemo(() => {
         return data.reduce((acc, el) => {
-            if (!el.isSelected) return acc;
-
             acc.All++;
             acc[el.state] = (acc[el.state] || 0) + 1;
             return acc;

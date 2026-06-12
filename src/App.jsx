@@ -42,16 +42,28 @@ function App() {
     });
   }
 
+  const [serverPayload, setServerPayload] = useState(null);
+
 useEffect(() => {
     let unlistenDeepLink;
+    let unlistenServer;
 
     const setupListener = async () => {
       unlistenDeepLink = await listen('process-deep-link', (event) => {
         const url = event.payload;
         if (url) {
           setTxt(url);
+          setServerPayload(null);
           setAddScreen(true);
         }
+      });
+      
+      unlistenServer = await listen('open_add_download_from_server', (event) => {
+          if (event.payload) {
+              setServerPayload(event.payload);
+              setTxt(event.payload.url);
+              setAddScreen(true);
+          }
       });
     };
 
@@ -85,6 +97,7 @@ useEffect(() => {
     return () => {
       window.removeEventListener("contextmenu", handleContextMenu);
       if (unlistenDeepLink) unlistenDeepLink();
+      if (unlistenServer) unlistenServer();
     };
   }, []);
   
@@ -101,16 +114,13 @@ useEffect(() => {
   const selectedTab = items.find(item => item.isSelected === 1);
 
   const allSelected = useMemo(() => {
-    return data.length > 0 &&
-        data
-          .filter(d => selectedTab.caption === "All" || d.state === selectedTab.caption)
-          .every(d => d.is_selected);
+    const filtered = data.filter(d => selectedTab.caption === "All" || d.state === selectedTab.caption);
+    return filtered.length > 0 && filtered.every(d => d.is_selected);
   }, [data, selectedTab]);
 
   const noneSelected = useMemo(() => {
-    return data
-          .filter(d => selectedTab.caption === "All" || d.state === selectedTab.caption)
-          .every(d => !d.is_selected);
+    const filtered = data.filter(d => selectedTab.caption === "All" || d.state === selectedTab.caption);
+    return filtered.length === 0 || filtered.every(d => !d.is_selected);
   }, [data, selectedTab]);
 
    return (
@@ -119,7 +129,7 @@ useEffect(() => {
       <TopBar data={data} selectedTab={selectedTab} allSelected={allSelected} noneSelected={noneSelected}  setAddScreen={setAddScreen} setDeleteScreen={setDeleteScreen} setCancelScreen={setCancelScreen}  />
       <TabBar items={items} selectTab={selectTab} data={data}/>
       {!loading && <MainArea selectedTab={selectedTab} data={data}/>}
-      {addScreen && <Add setAddScreen={setAddScreen} txt={txt} setTxt={setTxt}/>}
+      {addScreen && <Add setAddScreen={setAddScreen} txt={txt} setTxt={setTxt} serverPayload={serverPayload} />}
       {deleteScreen && <Delete setDeleteScreen={setDeleteScreen}/>}
       {cancelScreen && <Cancel setCancelScreen={setCancelScreen} data={data}/>}
     </div>
