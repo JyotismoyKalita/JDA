@@ -143,25 +143,9 @@ pub fn run() {
             active_tasks: RwLock::new(HashMap::new()),
             
             client: {
-                let mut headers = reqwest::header::HeaderMap::new();
-                headers.insert(reqwest::header::ACCEPT, reqwest::header::HeaderValue::from_static("text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"));
-                headers.insert(reqwest::header::ACCEPT_LANGUAGE, reqwest::header::HeaderValue::from_static("en-US,en;q=0.9"));
-                headers.insert(reqwest::header::ACCEPT_ENCODING, reqwest::header::HeaderValue::from_static("gzip, deflate, br"));
-                headers.insert(reqwest::header::CONNECTION, reqwest::header::HeaderValue::from_static("keep-alive"));
-                headers.insert(reqwest::header::UPGRADE_INSECURE_REQUESTS, reqwest::header::HeaderValue::from_static("1"));
-                headers.insert("sec-ch-ua", reqwest::header::HeaderValue::from_static("\"Google Chrome\";v=\"120\", \"Chromium\";v=\"120\", \"Not?A_Brand\";v=\"24\""));
-                headers.insert("sec-ch-ua-mobile", reqwest::header::HeaderValue::from_static("?0"));
-                headers.insert("sec-ch-ua-platform", reqwest::header::HeaderValue::from_static("\"Windows\""));
-                headers.insert("sec-fetch-dest", reqwest::header::HeaderValue::from_static("document"));
-                headers.insert("sec-fetch-mode", reqwest::header::HeaderValue::from_static("navigate"));
-                headers.insert("sec-fetch-site", reqwest::header::HeaderValue::from_static("none"));
-                headers.insert("sec-fetch-user", reqwest::header::HeaderValue::from_static("?1"));
-                
-                Client::builder()
-                    .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-                    .default_headers(headers)
-                    .connect_timeout(Duration::from_secs(10)) 
-                    .pool_idle_timeout(Duration::from_secs(90))
+                reqwest::Client::builder()
+                    .connect_timeout(std::time::Duration::from_secs(10)) 
+                    .pool_idle_timeout(std::time::Duration::from_secs(90))
                     .redirect(reqwest::redirect::Policy::limited(10))
                     .build()
                     .expect("Failed to create HTTP client")

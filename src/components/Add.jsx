@@ -28,13 +28,13 @@ function Add({setAddScreen, txt, setTxt, serverPayload}){
         el.focus();
     }
 
-    async function verify() {
+    async function verify(explicitCookies = undefined, explicitUserAgent = undefined, explicitReferer = undefined) {
         verifyRef.current.style.backgroundColor = "grey";
         const info = await invoke("verify_url", {
             url: linkRef.current.value.trim(),
-            cookies: cookies.length > 0 ? cookies : null,
-            userAgent: userAgent.length > 0 ? userAgent : null,
-            referer: referer.length > 0 ? referer : null
+            cookies: explicitCookies !== undefined ? explicitCookies : (cookies.length > 0 ? cookies : null),
+            userAgent: explicitUserAgent !== undefined ? explicitUserAgent : (userAgent.length > 0 ? userAgent : null),
+            referer: explicitReferer !== undefined ? explicitReferer : (referer.length > 0 ? referer : null)
         }).catch(()=>{
             verifyRef.current.style.backgroundColor = "";
         });
@@ -106,15 +106,31 @@ function Add({setAddScreen, txt, setTxt, serverPayload}){
     useEffect(() => {
         if (serverPayload) {
             setTimeout(() => {
+                const newCookies = serverPayload.cookie || "";
+                const newUserAgent = serverPayload.userAgent || "";
+                const newReferer = serverPayload.referer || "";
+
                 if (linkRef.current) linkRef.current.value = serverPayload.url || "";
                 if (nameRef.current) nameRef.current.value = serverPayload.name || "";
                 setSize(serverPayload.size || 0);
                 setResumeSupported(serverPayload.resume === "true");
-                setCookies(serverPayload.cookie || "");
-                setUserAgent(serverPayload.userAgent || "");
-                setReferer(serverPayload.referer || "");
-                if (serverPayload.url) {
-                    verify();
+                setCookies(newCookies);
+                setUserAgent(newUserAgent);
+                setReferer(newReferer);
+                if (serverPayload.resume !== "true") {
+                    if (maxConnectionRef.current) {
+                        maxConnectionRef.current.max = 1;
+                        maxConnectionRef.current.value = 1;
+                    }
+                } else {
+                    if (maxConnectionRef.current) {
+                        maxConnectionRef.current.max = 32;
+                        maxConnectionRef.current.value = 16;
+                    }
+                }
+
+                if (nameRef.current) {
+                    nameRef.current.focus();
                 }
             }, 100);
             return;

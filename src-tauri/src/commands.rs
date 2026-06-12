@@ -321,22 +321,21 @@ pub async fn verify_url(
     let state = (*state).clone();
     
     let client = &state.client; 
-    let parsed = reqwest::Url::parse(&url).map_err(|e| e.to_string())?;
+    let parsed = url::Url::parse(&url).map_err(|e| e.to_string())?;
 
-    let mut head_req = client.head(parsed.clone());
+    let mut head_req = client.head(parsed.to_string());
     if let Some(c) = &cookies { head_req = head_req.header(reqwest::header::COOKIE, c); }
-    if let Some(ua) = &user_agent { head_req = head_req.header(reqwest::header::USER_AGENT, ua); }
     if let Some(ref_str) = &referer { head_req = head_req.header(reqwest::header::REFERER, ref_str); }
     let head_resp = head_req.send().await;
 
-    let mut size = None;
-    let mut filename = None;
-    let mut content_type = None;
+    let mut size: Option<u64> = None;
+    let mut filename: Option<String> = None;
+    let mut content_type: Option<String> = None;
     let mut final_url = parsed.clone();
 
     if let Ok(resp) = head_resp {
         if resp.status().is_success() {
-            final_url = resp.url().clone();
+            final_url = url::Url::parse(&resp.url().to_string()).unwrap_or(final_url);
             let headers = resp.headers();
 
             size = headers
@@ -357,9 +356,22 @@ pub async fn verify_url(
         }
     }
 
-    let mut probe_req = client.get(parsed.clone()).header(reqwest::header::RANGE, "bytes=0-0");
+    let mut probe_req = client.get(parsed.to_string()).header(reqwest::header::RANGE, "bytes=0-");
     if let Some(c) = &cookies { probe_req = probe_req.header(reqwest::header::COOKIE, c); }
-    if let Some(ua) = &user_agent { probe_req = probe_req.header(reqwest::header::USER_AGENT, ua); }
+    if let Some(ua) = &user_agent {
+        probe_req = probe_req.header(reqwest::header::USER_AGENT, ua);
+        
+        let mut cv = "120";
+        if let Some(idx) = ua.find("Chrome/") {
+            let rest = &ua[idx + 7..];
+            if let Some(end) = rest.find('.') {
+                cv = &rest[..end];
+            }
+        }
+        probe_req = probe_req.header("sec-ch-ua", format!("\"Google Chrome\";v=\"{0}\", \"Chromium\";v=\"{0}\", \"Not?A_Brand\";v=\"24\"", cv));
+        probe_req = probe_req.header("sec-ch-ua-mobile", "?0");
+        probe_req = probe_req.header("sec-ch-ua-platform", "\"Windows\"");
+    }
     if let Some(ref_str) = &referer { probe_req = probe_req.header(reqwest::header::REFERER, ref_str); }
     let probe = probe_req.send().await;
 
@@ -371,11 +383,15 @@ pub async fn verify_url(
     if size.is_none() {
         if let Ok(resp) = &probe {
             if let Some(cr) = resp.headers().get(reqwest::header::CONTENT_RANGE) {
-                // "bytes 0-0/12345" -> 12345
+                // "bytes 0-12344/12345" -> 12345
                 if let Ok(s) = cr.to_str() {
                     if let Some(total) = s.rsplit('/').next() {
                          size = total.parse::<u64>().ok();
                     }
+                }
+            } else if let Some(cl) = resp.headers().get(reqwest::header::CONTENT_LENGTH) {
+                if let Ok(s) = cl.to_str() {
+                    size = s.parse::<u64>().ok();
                 }
             }
             if filename.is_none() {
@@ -455,10 +471,10 @@ pub fn add_download(app: tauri::AppHandle, state: tauri::State<Arc<DownloadState
         }
     }
 
-    if download.total > 0 && download.parts.is_empty() {
+    if download.parts.is_empty() {
         download.parts = vec![crate::models::Part {
             start: 0,
-            end: download.total.saturating_sub(1),
+            end: if download.total > 0 { download.total.saturating_sub(1) } else { 0 },
             downloaded: 0,
         }];
     }

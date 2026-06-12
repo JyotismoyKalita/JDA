@@ -127,7 +127,7 @@ fn get_next_part(
 pub async fn worker(
     worker_index: usize,
     download_id: String,
-    url: String,
+    mut url: String,
     temp_path: PathBuf,
     final_path: PathBuf,
     client: Client,
@@ -223,12 +223,33 @@ pub async fn worker(
 
             let mut req = client.get(&url).header("Range", &range_header);
             if let Some(c) = &cookies { req = req.header(reqwest::header::COOKIE, c); }
-            if let Some(ua) = &user_agent { req = req.header(reqwest::header::USER_AGENT, ua); }
-            if let Some(ref_str) = &referer { req = req.header(reqwest::header::REFERER, ref_str); }
+            if let Some(ua) = &user_agent {
+                req = req.header(reqwest::header::USER_AGENT, ua);
+                
+                // Extract Chrome version to match sec-ch-ua
+                let mut cv = "120";
+                if let Some(idx) = ua.find("Chrome/") {
+                    let rest = &ua[idx + 7..];
+                    if let Some(end) = rest.find('.') {
+                        cv = &rest[..end];
+                    }
+                }
+                
+                req = req.header("sec-ch-ua", format!("\"Google Chrome\";v=\"{0}\", \"Chromium\";v=\"{0}\", \"Not?A_Brand\";v=\"24\"", cv));
+                req = req.header("sec-ch-ua-mobile", "?0");
+                req = req.header("sec-ch-ua-platform", "\"Windows\"");
+            }
+            if let Some(ref_str) = &referer { 
+                if let Ok(val) = reqwest::header::HeaderValue::from_str(ref_str) {
+                    req = req.header(reqwest::header::REFERER, val); 
+                }
+            }
+            
 
             let resp = match req.send().await {
                 Ok(r) => r,
-                Err(_) => {
+                Err(e) => {
+                    println!("Worker {} req.send error: {}", worker_index, e);
                     if chunks_completed == 0 && !has_started_transfer {
                         active_parts_lock.write().unwrap().retain(|ap| ap.part_index != part_index);
                         if let Ok(mut list) = state.list.write() {
@@ -261,9 +282,38 @@ pub async fn worker(
                 }
             };
 
+            if resp.status().is_redirection() {
+                if let Some(loc) = resp.headers().get(reqwest::header::LOCATION) {
+                    if let Ok(loc_str) = loc.to_str() {
+                        if let Ok(new_url) = url::Url::parse(loc_str) {
+                            url = new_url.to_string();
+                            if retries < MAX_RETRIES { retries += 1; continue 'retry_loop; }
+                        } else if let Ok(base_url) = url::Url::parse(&url) {
+                            if let Ok(new_url) = base_url.join(loc_str) {
+                                url = new_url.to_string();
+                                if retries < MAX_RETRIES { retries += 1; continue 'retry_loop; }
+                            }
+                        }
+                    }
+                }
+            }
+
             let is_partial = resp.status() == reqwest::StatusCode::PARTIAL_CONTENT;
-            if !resp.status().is_success() && !is_partial {
-                let _ = resp.bytes().await; // Consume body
+            let status = resp.status();
+            if !status.is_success() && !is_partial {
+                println!("Worker {} failed with status: {}", worker_index, status);
+                if status == reqwest::StatusCode::FORBIDDEN {
+                    println!("--- 403 Response Headers ---");
+                    for (k, v) in resp.headers().iter() {
+                        println!("{}: {:?}", k, v);
+                    }
+                    if let Ok(body) = resp.text().await {
+                        println!("--- 403 Response Body ---");
+                        println!("{}", &body[..std::cmp::min(500, body.len())]);
+                    }
+                } else {
+                    let _ = resp.bytes().await; // Consume body
+                }
                 active_parts_lock.write().unwrap().retain(|ap| ap.part_index != part_index); // Release part
                 
                 if chunks_completed == 0 && !has_started_transfer {
