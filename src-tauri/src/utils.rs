@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::path::{Path, PathBuf};
 
 use reqwest::RequestBuilder;
 
@@ -31,6 +32,68 @@ pub fn apply_browser_headers(
     }
 
     req
+}
+
+pub fn unique_file_path(path: &Path) -> PathBuf {
+    if !path.exists() {
+        return path.to_path_buf();
+    }
+
+    let parent = path.parent().unwrap_or_else(|| Path::new(""));
+    let stem = path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .filter(|s| !s.is_empty())
+        .unwrap_or("download");
+    let extension = path.extension().and_then(|s| s.to_str());
+
+    for i in 1.. {
+        let file_name = match extension {
+            Some(ext) if !ext.is_empty() => format!("{}({}).{}", stem, i, ext),
+            _ => format!("{}({})", stem, i),
+        };
+        let candidate = parent.join(file_name);
+
+        if !candidate.exists() {
+            return candidate;
+        }
+    }
+
+    path.to_path_buf()
+}
+
+pub fn unique_file_name_in_dir(dir: &Path, desired_name: &str, reserved_names: &[String]) -> String {
+    let desired_path = dir.join(desired_name);
+    if !desired_path.exists()
+        && !dir.join(format!("{}.jdm", desired_name)).exists()
+        && !reserved_names.iter().any(|name| name == desired_name)
+    {
+        return desired_name.to_string();
+    }
+
+    let path = Path::new(desired_name);
+    let stem = path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .filter(|s| !s.is_empty())
+        .unwrap_or("download");
+    let extension = path.extension().and_then(|s| s.to_str());
+
+    for i in 1.. {
+        let file_name = match extension {
+            Some(ext) if !ext.is_empty() => format!("{}({}).{}", stem, i, ext),
+            _ => format!("{}({})", stem, i),
+        };
+
+        if !dir.join(&file_name).exists()
+            && !dir.join(format!("{}.jdm", file_name)).exists()
+            && !reserved_names.iter().any(|name| name == &file_name)
+        {
+            return file_name;
+        }
+    }
+
+    desired_name.to_string()
 }
 
 pub fn parse_filename(header: &str) -> Option<String> {

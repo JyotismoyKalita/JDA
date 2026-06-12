@@ -186,6 +186,18 @@
     border: 1px solid rgba(59, 130, 246, 0.2);
 }
 
+.Info-Validity.valid {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--accent-emerald);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.Info-Validity.waiting {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--accent-orange);
+    border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
 .Info-Link {
     display: flex;
     gap: 12px;
@@ -227,4 +239,9 @@
 .Info-Button:hover {
     background: rgba(59, 130, 246, 0.15);
     color: var(--accent-blue);
+}
+
+.Info-Button.active {
+    background: rgba(245, 158, 11, 0.18);
+    color: var(--accent-orange);
 }

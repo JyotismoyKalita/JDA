@@ -7,10 +7,22 @@ use std::process::Command;
 use tauri::Manager;
 
 use crate::models::{DownloadState, Download, UrlInfo, ActiveTask};
-use crate::utils::{parse_filename, extension_from_mime, apply_browser_headers};
+use crate::utils::{parse_filename, extension_from_mime, apply_browser_headers, unique_file_name_in_dir, unique_file_path};
 use crate::state::broadcast;
 use crate::downloader::worker;
 use tauri_plugin_dialog::DialogExt;
+
+#[derive(serde::Deserialize)]
+pub struct DownloadSourceUpdate {
+    pub url: String,
+    pub cookies: Option<String>,
+    #[serde(rename = "userAgent")]
+    pub user_agent: Option<String>,
+    pub referer: Option<String>,
+    pub headers: HashMap<String, String>,
+    pub resume: Option<bool>,
+    pub total: Option<u64>,
+}
 
 #[tauri::command]
 pub async fn open_file_dir(path: String) -> Result<(), String> {
@@ -115,7 +127,17 @@ pub async fn resume_download(
         .filter(|p| p.start != u64::MAX)
         .all(|p| p.downloaded >= (p.end - p.start + 1)) {
         if temp_path.exists() {
-            let _ = tokio::fs::rename(&temp_path, &final_path).await;
+            let resolved_final_path = unique_file_path(&final_path);
+            let _ = tokio::fs::rename(&temp_path, &resolved_final_path).await;
+            if let Some(name) = resolved_final_path.file_name().and_then(|n| n.to_str()) {
+                let mut list = state.list.write().unwrap();
+                if let Some(d) = list.iter_mut().find(|d| d.id == id) {
+                    d.name = name.to_string();
+                    d.state = "Completed".into();
+                }
+                drop(list);
+                broadcast(&state);
+            }
         }
         return Ok(());
     }
@@ -249,6 +271,27 @@ pub fn pause_download(state: tauri::State<'_, Arc<DownloadState>>, id: String) -
 
 #[tauri::command]
 pub fn change_link(state: tauri::State<'_, Arc<DownloadState>>, id: String, url: String) -> Result<(), String> {
+    update_download_source(
+        state,
+        id,
+        DownloadSourceUpdate {
+            url,
+            cookies: None,
+            user_agent: None,
+            referer: None,
+            headers: HashMap::new(),
+            resume: None,
+            total: None,
+        },
+    )
+}
+
+#[tauri::command]
+pub fn update_download_source(
+    state: tauri::State<'_, Arc<DownloadState>>,
+    id: String,
+    source: DownloadSourceUpdate,
+) -> Result<(), String> {
     if let Some(task) = state.active_tasks.write().unwrap().remove(&id) {
         task.notify.notify_waiters();
         for h in task.handles {
@@ -259,9 +302,30 @@ pub fn change_link(state: tauri::State<'_, Arc<DownloadState>>, id: String, url:
     {
         let mut list = state.list.write().unwrap();
         if let Some(d) = list.iter_mut().find(|d| d.id == id) {
+            if let Some(total) = source.total {
+                if d.total > 0 && total > 0 && d.total != total {
+                    return Err(format!(
+                        "Replacement link size mismatch: expected {} bytes, got {} bytes",
+                        d.total, total
+                    ));
+                }
+            }
+
             d.state = "Paused".into();
             d.speed = 0;
-            d.link = url;
+            d.link = source.url;
+            d.cookies = source.cookies;
+            d.user_agent = source.user_agent;
+            d.referer = source.referer;
+            d.headers = source.headers;
+            if let Some(resume) = source.resume {
+                d.resume = resume;
+            }
+            if let Some(total) = source.total {
+                if total > 0 {
+                    d.total = total;
+                }
+            }
             for speed in d.speeds.iter_mut() {
                 *speed = 0;
             }
@@ -446,6 +510,16 @@ pub fn add_download(app: tauri::AppHandle, state: tauri::State<Arc<DownloadState
                 download.location = dir.join(&download.location).to_string_lossy().into_owned();
             }
         }
+    }
+
+    {
+        let list = state.list.read().unwrap();
+        let reserved_names = list
+            .iter()
+            .filter(|d| Path::new(&d.location) == Path::new(&download.location))
+            .map(|d| d.name.clone())
+            .collect::<Vec<_>>();
+        download.name = unique_file_name_in_dir(Path::new(&download.location), &download.name, &reserved_names);
     }
 
     if download.resume && download.total > 0 {

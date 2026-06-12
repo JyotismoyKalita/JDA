@@ -3,11 +3,11 @@ import '../theme/colors.css'
 import Progress from './Progress';
 import { formatSize, formatTime, formatStartTime } from '../utils/format';
 import { invoke } from '@tauri-apps/api/core';
-import { FaCircleInfo, FaFolderOpen, FaPencil, FaCheck, FaRegTrashCan, FaRegCirclePlay, FaRegCirclePause, FaRegCircleXmark, FaCircleMinus, FaRotateLeft } from 'react-icons/fa6';
+import { FaCircleInfo, FaFolderOpen, FaPencil, FaCheck, FaRegTrashCan, FaRegCirclePlay, FaRegCirclePause, FaRegCircleXmark, FaCircleMinus, FaRotateLeft, FaLink } from 'react-icons/fa6';
 import { useState, useRef } from 'react';
 
 
-function Rows({element, selectedTab}){
+function Rows({element, selectedTab, repairTargetId, setRepairTargetId, repairStatus, setRepairStatus}){
 
     const [info, setInfo] = useState(false);
     const [editable, setEditable] = useState(false);
@@ -58,19 +58,50 @@ function Rows({element, selectedTab}){
             headers: element.headers || {}
         }).catch(()=>null);
         if(!info){
+            setRepairStatus(null);
             setValidity("invalid");
             return;
         }
         if(!info.size || info.size!=element.total){
             console.log(info.size)
             console.log(element.size)
+            setRepairStatus(null);
             setValidity("invalid");
             return;
         } else {
+            setRepairStatus(null);
             setValidity("valid")
-            invoke('change_link', {id: element.id, url: url})
+            invoke('update_download_source', {
+                id: element.id,
+                source: {
+                    url: url,
+                    cookies: element.cookies || null,
+                    userAgent: element.user_agent || null,
+                    referer: element.referer || null,
+                    headers: element.headers || {},
+                    resume: info.resume_supported,
+                    total: info.size || null
+                }
+            })
             setEditable(false)
         }
+    }
+
+    function catchFromBrowser(){
+        if (repairTargetId === element.id) {
+            setRepairTargetId(null);
+            setRepairStatus(null);
+            setValidity("hidden");
+            return;
+        }
+
+        setRepairTargetId(element.id);
+        setRepairStatus({
+            id: element.id,
+            state: "waiting",
+            message: "Waiting for the next browser download to replace this link"
+        });
+        setValidity("waiting");
     }
 
     function deleteRow(){
@@ -183,10 +214,13 @@ function Rows({element, selectedTab}){
                             <input type="url" defaultValue={element.link} disabled={!editable} className={inputEditable} ref={textRef}/>
                             <div className='Info-Button' onClick={toggleEditable}><FaPencil /></div>
                             <div className='Info-Button' onClick={validate}><FaCheck /></div>
+                            <div className={`Info-Button${repairTargetId === element.id ? ' active' : ''}`} onClick={catchFromBrowser} title="Catch replacement link from browser"><FaLink /></div>
                         </div>
-                        {validity != "hidden" && <div className={`Info-Validity ${validity}`}>
+                        {(validity != "hidden" || repairStatus?.id === element.id) && <div className={`Info-Validity ${repairStatus?.id === element.id ? repairStatus.state : validity}`}>
                             {validity === "invalid" && "Invalid Link for this download"}
                             {validity === "checking" && "Checking link..."}
+                            {repairStatus?.id === element.id ? repairStatus.message : validity === "valid" && "Replacement link saved"}
+                            {repairStatus?.id !== element.id && validity === "waiting" && "Waiting for the next browser download to replace this link"}
                         </div> }
                     </div>
                 }

@@ -4,7 +4,7 @@ import TopBar from './components/TopBar'
 import TabBar from './components/TabBar'
 import MainArea from './Pages/MainArea'
 import './theme/colors.css'
-import { useState, useEffect, useMemo} from 'react'
+import { useState, useEffect, useMemo, useRef} from 'react'
 import Add from './components/Add'
 import Delete from './components/Delete'
 import Cancel from './components/Cancel'
@@ -30,6 +30,9 @@ function App() {
   const [deleteScreen, setDeleteScreen] = useState(false);
   const [cancelScreen, setCancelScreen] = useState(false);
   const [txt, setTxt] = useState('');
+  const [repairTargetId, setRepairTargetId] = useState(null);
+  const [repairStatus, setRepairStatus] = useState(null);
+  const repairTargetIdRef = useRef(null);
 
   const [loading, setLoading] = useState(true);
 
@@ -45,6 +48,10 @@ function App() {
   const [serverPayload, setServerPayload] = useState(null);
 
 useEffect(() => {
+    repairTargetIdRef.current = repairTargetId;
+  }, [repairTargetId]);
+
+useEffect(() => {
     let unlistenDeepLink;
     let unlistenServer;
 
@@ -58,12 +65,47 @@ useEffect(() => {
         }
       });
       
-      unlistenServer = await listen('open_add_download_from_server', (event) => {
-          if (event.payload) {
-              setServerPayload(event.payload);
-              setTxt(event.payload.url);
-              setAddScreen(true);
+      unlistenServer = await listen('open_add_download_from_server', async (event) => {
+          if (!event.payload) {
+            return;
           }
+
+          if (repairTargetIdRef.current) {
+            const payload = event.payload;
+            const targetId = repairTargetIdRef.current;
+
+            try {
+              await invoke("update_download_source", {
+                id: targetId,
+                source: {
+                  url: payload.url || "",
+                  cookies: payload.cookie || null,
+                  userAgent: payload.userAgent || null,
+                  referer: payload.referer || null,
+                  headers: payload.headers || {},
+                  resume: payload.resume === "true",
+                  total: payload.size || null
+                }
+              });
+              setRepairStatus({
+                id: targetId,
+                state: "valid",
+                message: "Replacement link saved"
+              });
+              setRepairTargetId(null);
+            } catch (err) {
+              setRepairStatus({
+                id: targetId,
+                state: "invalid",
+                message: String(err)
+              });
+            }
+            return;
+          }
+
+          setServerPayload(event.payload);
+          setTxt(event.payload.url);
+          setAddScreen(true);
       });
     };
 
@@ -128,7 +170,7 @@ useEffect(() => {
       <TitleBar />
       <TopBar data={data} selectedTab={selectedTab} allSelected={allSelected} noneSelected={noneSelected}  setAddScreen={setAddScreen} setDeleteScreen={setDeleteScreen} setCancelScreen={setCancelScreen}  />
       <TabBar items={items} selectTab={selectTab} data={data}/>
-      {!loading && <MainArea selectedTab={selectedTab} data={data}/>}
+      {!loading && <MainArea selectedTab={selectedTab} data={data} repairTargetId={repairTargetId} setRepairTargetId={setRepairTargetId} repairStatus={repairStatus} setRepairStatus={setRepairStatus}/>}
       {addScreen && <Add setAddScreen={setAddScreen} txt={txt} setTxt={setTxt} serverPayload={serverPayload} />}
       {deleteScreen && <Delete setDeleteScreen={setDeleteScreen}/>}
       {cancelScreen && <Cancel setCancelScreen={setCancelScreen} data={data}/>}

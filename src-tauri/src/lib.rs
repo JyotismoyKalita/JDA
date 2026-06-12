@@ -154,6 +154,7 @@ pub fn run() {
             cancel_download,
             open_file_dir,
             change_link,
+            update_download_source,
             delete_download,
             remove_download,
             select_one

@@ -8,7 +8,7 @@ use tokio::io::{AsyncWriteExt, AsyncSeekExt, BufWriter};
 
 use crate::models::{DownloadState, ActivePart};
 use crate::state::broadcast;
-use crate::utils::apply_browser_headers;
+use crate::utils::{apply_browser_headers, unique_file_path};
 
 fn get_next_part(
     state: &Arc<DownloadState>,
@@ -542,7 +542,11 @@ pub async fn worker(
                 if is_actually_done {
                     d.state = "Completed".into();
                     if temp_path.exists() {
-                        let _ = std::fs::rename(&temp_path, &final_path);
+                        let resolved_final_path = unique_file_path(&final_path);
+                        if let Some(name) = resolved_final_path.file_name().and_then(|n| n.to_str()) {
+                            d.name = name.to_string();
+                        }
+                        let _ = std::fs::rename(&temp_path, resolved_final_path);
                     }
                 } else if d.state == "Downloading" || d.state == "Connecting" {
                     d.state = "Failed".into();
