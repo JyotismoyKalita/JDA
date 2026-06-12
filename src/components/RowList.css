@@ -1,0 +1,26 @@
+.RowList {
+    display: flex;
+    flex-direction: column;
+    padding: 12px 4px;
+    gap: 8px;
+    height: 100%;
+    overflow-y: auto;
+}
+
+/* Custom Scrollbar for RowList */
+.RowList::-webkit-scrollbar {
+    width: 8px;
+}
+
+.RowList::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.RowList::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+}
+
+.RowList::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.2);
+}

@@ -1,34 +1,97 @@
 .TopBar {
-    align-content: center;
+    height: 60px;
     display: flex;
-    height: 90px;
     align-items: center;
-    white-space: nowrap;
+    padding: 0 16px;
+    gap: 12px;
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border-light);
+    user-select: none;
+    overflow-x: auto;
+    scrollbar-width: none; /* Firefox */
 }
 
-.TopBar-Button {
-    height: 30px;
-    width: 30px;
-    font-size: 100%;
+.TopBar::-webkit-scrollbar {
+    display: none; /* Chrome, Safari and Opera */
+}
+
+.spacer {
+    flex-grow: 1;
 }
 
 .TopBar-Button-Cover {
-    margin: 15px 15px 15px 15px;
-    width: 50px;
     display: flex;
-    flex-direction: column;
     align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
     cursor: pointer;
-    gap: 5px;
-    user-select: none;
-    transition: transform 0.1s ease, gap 0.1s ease;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
-.TopBar-Button-Cover:hover {
-    gap: 10px;
-    transform: scale(1.08);
+.TopBar-Button-Cover:hover:not(.disabled) {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
 }
 
-.Disabled {
-    color: grey;
+.TopBar-Button-Cover:active:not(.disabled) {
+    transform: translateY(0);
+}
+
+.TopBar-Icon {
+    font-size: 16px;
+}
+
+/* Button Variants */
+.add-btn {
+    background: var(--gradient-primary);
+    border: none;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.add-btn:hover {
+    box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
+    filter: brightness(1.1);
+}
+
+.danger-btn:hover:not(.disabled) {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--accent-red);
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+.success-btn:hover:not(.disabled) {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--accent-emerald);
+    border-color: rgba(16, 185, 129, 0.3);
+}
+
+.warning-btn:hover:not(.disabled) {
+    background: rgba(245, 158, 11, 0.15);
+    color: var(--accent-orange);
+    border-color: rgba(245, 158, 11, 0.3);
+}
+
+.default-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.default-btn.active {
+    background: rgba(59, 130, 246, 0.15);
+    color: var(--accent-blue);
+    border-color: rgba(59, 130, 246, 0.3);
+}
+
+.disabled {
+    opacity: 0.4;
+    filter: grayscale(1);
+    pointer-events: none;
 }

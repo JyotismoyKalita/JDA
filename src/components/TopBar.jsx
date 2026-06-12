@@ -5,19 +5,24 @@ import { invoke } from "@tauri-apps/api/core";
 
 function TopBar({data, selectedTab, allSelected, noneSelected ,setAddScreen, setDeleteScreen, setCancelScreen}){
 
+    const hasSelectedToDelete = data.some(row => row.is_selected);
+    const hasSelectedToResume = data.some(row => row.is_selected && ["Paused", "Cancelled", "Failed"].includes(row.state));
+    const hasSelectedToPause = data.some(row => row.is_selected && row.state === "Downloading");
+    const hasSelectedToCancel = data.some(row => row.is_selected && ["Downloading", "Paused", "Failed"].includes(row.state));
+
     function addLink(){
         setAddScreen(oldVal => !oldVal);
     }
 
     function deleteRow(){
-        if (noneSelected){
+        if (!hasSelectedToDelete){
             return
         }
         setDeleteScreen(oldVal => !oldVal);
     }
 
     async function resumeRow(){
-        if (noneSelected){
+        if (!hasSelectedToResume){
             return
         }
         const selected = data.filter(
@@ -31,7 +36,7 @@ function TopBar({data, selectedTab, allSelected, noneSelected ,setAddScreen, set
 
 
     async function pauseRow(){
-        if (noneSelected){
+        if (!hasSelectedToPause){
             return
         }
         const selected = data.filter(
@@ -46,7 +51,7 @@ function TopBar({data, selectedTab, allSelected, noneSelected ,setAddScreen, set
     }
 
     async function cancelRow(){
-        if (noneSelected || selectedTab.caption === "Cancelled"){
+        if (!hasSelectedToCancel){
             return
         }
         setCancelScreen(oldVal => !oldVal);
@@ -60,39 +65,53 @@ function TopBar({data, selectedTab, allSelected, noneSelected ,setAddScreen, set
         invoke("quit");
     }
 
-    const coverStyle = "TopBar-Button-Cover Primary";
+    function handleWheel(e) {
+        if (e.deltaY !== 0) {
+            e.currentTarget.scrollLeft += e.deltaY;
+            e.preventDefault();
+        }
+    }
 
-    const buttonStyle = "TopBar-Button Primary";
+    const showResume = ["All", "Paused", "Cancelled", "Failed"].includes(selectedTab.caption);
+    const showPause = ["All", "Downloading"].includes(selectedTab.caption);
+    const showCancel = ["All", "Downloading", "Paused", "Failed"].includes(selectedTab.caption);
 
     return (
-        <div className="TopBar BG-Primary">
-            <div className="TopBar-Button-Cover Secondary" onClick={addLink}>
-                <FaSquarePlus className="TopBar-Button Secondary" />
-                Add Link
+        <div className="TopBar" onWheel={handleWheel}>
+            <div className="TopBar-Button-Cover add-btn" onClick={addLink}>
+                <FaSquarePlus className="TopBar-Icon" />
+                <span>Add Link</span>
             </div>
-            <div className={coverStyle} onClick={deleteRow}>
-                <FaRegTrashCan className={buttonStyle} />
-                Delete
+            <div className={`TopBar-Button-Cover danger-btn${hasSelectedToDelete ? '' : ' disabled'}`} onClick={deleteRow}>
+                <FaRegTrashCan className="TopBar-Icon" />
+                <span>Delete</span>
             </div>
-            <div className={coverStyle} onClick={resumeRow}>
-                {selectedTab.caption === "Cancelled" ? <FaRotateLeft className={buttonStyle} /> : <FaRegCirclePlay className={buttonStyle} />}
-                {selectedTab.caption === "Cancelled" ? "Restart" : "Resume"}
+            {showResume && (
+                <div className={`TopBar-Button-Cover success-btn${hasSelectedToResume ? '' : ' disabled'}`} onClick={resumeRow}>
+                    {selectedTab.caption === "Cancelled" ? <FaRotateLeft className="TopBar-Icon" /> : <FaRegCirclePlay className="TopBar-Icon" />}
+                    <span>{selectedTab.caption === "Cancelled" ? "Restart" : "Resume"}</span>
+                </div>
+            )}
+            {showPause && (
+                <div className={`TopBar-Button-Cover warning-btn${hasSelectedToPause ? '' : ' disabled'}`} onClick={pauseRow}>
+                    <FaRegCirclePause className="TopBar-Icon" />
+                    <span>Pause</span>
+                </div>
+            )}
+            {showCancel && (
+                <div className={`TopBar-Button-Cover danger-btn${hasSelectedToCancel ? '' : ' disabled'}`} onClick={cancelRow}>
+                    <FaRegCircleXmark className="TopBar-Icon"/>
+                    <span>Cancel</span>
+                </div>
+            )}
+            <div className="spacer"></div>
+            <div className={`TopBar-Button-Cover default-btn${allSelected ? ' active' : ''}`} onClick={selectRow}>
+                <FaListCheck className="TopBar-Icon" />
+                <span>Select All</span>
             </div>
-            <div className={coverStyle} onClick={pauseRow}>
-                <FaRegCirclePause className={buttonStyle} />
-                Pause
-            </div>
-            <div className={coverStyle} onClick={cancelRow}>
-                <FaRegCircleXmark className={buttonStyle}/>
-                Cancel
-            </div>
-            <div className="TopBar-Button-Cover Primary" onClick={selectRow}>
-                <FaListCheck className={allSelected ? "TopBar-Button Secondary" : "TopBar-Button Primary"} />
-                Select All
-            </div>
-            <div className="TopBar-Button-Cover Primary" onClick={quitApp}>
-                <FaDoorOpen className= "TopBar-Button Primary" />
-                Quit
+            <div className="TopBar-Button-Cover default-btn" onClick={quitApp}>
+                <FaDoorOpen className="TopBar-Icon" />
+                <span>Quit</span>
             </div>
         </div>
     );

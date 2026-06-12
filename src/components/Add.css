@@ -1,55 +1,112 @@
-.Add{
-    height: max-content;
-    width: max-content;
+/* Full screen overlay to blur background */
+.Add-Overlay {
     position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    padding: 20px;
-    border-radius: 10px;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(8px);
+    z-index: 100;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.Add {
+    width: 500px;
+    background: rgba(19, 27, 44, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+    border-radius: 16px;
+    padding: 24px;
     user-select: none;
-    border: 1px solid gray;
-}
-
-.Add-Button {
-    border-radius: 10px;
-    width: min-content;
-    height: 20px;
-    padding: 5px;
-    cursor: pointer;
-    display: inline;
-    min-width: 60px;
-    text-align: center;
-    align-content: center;
-}
-
-.Add-Button:hover {
-    background-color: rgb(122, 195, 255);;
+    animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    backdrop-filter: blur(20px);
 }
 
 .Add-Row {
     display: flex;
     flex-direction: row;
-    height: 20px;
-    margin-top: 20px;
-    margin-bottom: 20px;
-    gap: 10px;
+    margin-top: 16px;
+    margin-bottom: 16px;
+    gap: 12px;
     align-items: center;
+    color: var(--text-secondary);
+    font-size: 14px;
+    font-weight: 500;
 }
 
 .Add-Text {
     flex-grow: 1;
-    border-radius: 10px;
-    border-style: none;
-    height: 30px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(0, 0, 0, 0.2);
+    height: 40px;
+    padding: 0 16px;
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 14px;
+    transition: all 0.2s ease;
 }
 
-.Add-Text:hover {
-    background-color: rgb(97, 97, 97);
+.Add-Text:focus {
+    outline: none;
+    border-color: var(--accent-blue);
+    background: rgba(0, 0, 0, 0.3);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.Add-Button {
+    border-radius: 8px;
+    height: 40px;
+    padding: 0 20px;
+    cursor: pointer;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.2s;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+}
+
+.Add-Button:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateY(-1px);
+}
+
+.Add-Button:active {
+    transform: translateY(0);
+}
+
+.Add-Button.primary {
+    background: var(--gradient-primary);
+    border: none;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.Add-Button.primary:hover {
+    box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
+    filter: brightness(1.1);
 }
 
 .Add-Last {
-    border-top: 2px groove rgb(70, 70, 70);
-    padding-top: 15px;
-    justify-content: end;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding-top: 20px;
+    margin-top: 24px;
+    justify-content: flex-end;
 }

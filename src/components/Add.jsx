@@ -174,40 +174,41 @@ function Add({setAddScreen, txt, setTxt, serverPayload}){
     }, [txt, setTxt]);
 
     return (
-        <div className='Add BG-Primary Primary'>
-            <div className='Add-Row'>
-                Link:
-                <input type="url" className='Add-Text BG-Secondary Primary' ref={linkRef}/>
-                <div className="BG-Quarternary Add-Button" onClick={() => verify()} ref={verifyRef}>Verify</div>
-                <div className="BG-Quarternary Add-Button" onClick={pasteText}>
-                    <FaRegPaste />
+        <div className="Add-Overlay" onClick={(e) => {if(e.target.className === 'Add-Overlay') setAddScreen(false)}}>
+            <div className='Add'>
+                <div className='Add-Row'>
+                    Link:
+                    <input type="url" className='Add-Text' ref={linkRef} placeholder="https://example.com/file.zip" />
+                    <div className="Add-Button primary" onClick={() => verify()} ref={verifyRef}>Verify</div>
+                    <div className="Add-Button" onClick={pasteText}>
+                        <FaRegPaste />
+                    </div>
+                </div>
+                <div className='Add-Row'>
+                    Name:
+                    <input type="text" className='Add-Text' ref={nameRef} placeholder="file.zip" />
+                </div>
+                <div className='Add-Row'>
+                    Location:
+                    <input type="text" className='Add-Text' ref={locationRef} defaultValue={"Downloads"}/>
+                    <div className="Add-Button" onClick={choose}>
+                        <FaFolderOpen />
+                    </div>
+                </div>
+                <div className='Add-Row'>
+                    Max Connections:
+                    <input type="number" min="1" max="32" defaultValue={16} className='Add-Text' ref={maxConnectionRef}/>
+                </div>
+                <div className='Add-Row' style={{ justifyContent: 'space-between' }}>
+                    <div>Resume Support: <span style={{color: resumeSupported ? 'var(--accent-emerald)' : 'var(--accent-red)'}}>{resumeSupported ? "Yes" : "No"}</span></div>
+                    <div>File Size: {formatSize(size)}</div>
+                </div>
+                <div className='Add-Row Add-Last'>
+                    <div className="Add-Button" onClick={()=>start("Paused")}>Add</div>
+                    <div className="Add-Button primary" onClick={()=>start("Downloading")}>Start</div>
+                    <div className="Add-Button" onClick={()=>setAddScreen(false)}>Cancel</div>
                 </div>
             </div>
-            <div className='Add-Row'>
-                Name:
-                <input type="text" className='Add-Text BG-Secondary Primary' ref={nameRef}/>
-            </div>
-            <div className='Add-Row'>
-                Location:
-                <input type="text" className='Add-Text BG-Secondary Primary' ref={locationRef} defaultValue={"Downloads"}/>
-                <div className="BG-Quarternary Add-Button" onClick={choose}>
-                    <FaFolderOpen />
-                </div>
-            </div>
-            <div className='Add-Row'>
-                Max Connections:
-                <input type="number" min="1" max="32" defaultValue={16}  className='Add-Text BG-Secondary Primary' ref={maxConnectionRef}/>
-            </div>
-            <div className='Add-Row'>
-                <div>Resume Support: {resumeSupported ? "Yes" : "No"}</div>
-                <div>File Size: {formatSize(size)}</div>
-            </div>
-            <div className='Add-Row Add-Last'>
-                <div className="BG-Quarternary Add-Button" onClick={()=>start("Paused")}>Add</div>
-                <div className="BG-Quarternary Add-Button" onClick={()=>start("Downloading")}>Start</div>
-                <div className="BG-Quarternary Add-Button" onClick={()=>setAddScreen(false)}>Cancel</div>
-            </div>
-            
         </div>
     );
 }

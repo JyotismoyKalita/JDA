@@ -1,24 +1,43 @@
-.Primary {
-    color: rgb(255, 255, 238);
+:root {
+    /* Base Backgrounds - Deep Slate/Navy tones */
+    --bg-deep: #0B0F19;        /* Main App Background */
+    --bg-surface: #131B2C;     /* Cards, Modals, TopBar */
+    --bg-surface-hover: #1A243A;
+    --bg-elevated: #1F2937;    /* Active states, popups */
+    --bg-glass: rgba(19, 27, 44, 0.6); /* Glassmorphism panels */
+
+    /* Text Colors */
+    --text-primary: #F8FAFC;
+    --text-secondary: #94A3B8;
+    --text-muted: #64748B;
+
+    /* Accent Colors - Vibrant Gradients */
+    --accent-blue: #3B82F6;
+    --accent-cyan: #06B6D4;
+    --accent-purple: #8B5CF6;
+    --accent-emerald: #10B981;
+    --accent-red: #EF4444;
+    --accent-orange: #F59E0B;
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);
+    --gradient-success: linear-gradient(135deg, #10B981 0%, #059669 100%);
+    --gradient-danger: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+
+    /* Borders & Shadows */
+    --border-light: rgba(255, 255, 255, 0.08);
+    --border-focus: rgba(59, 130, 246, 0.5);
+    --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+    --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
+    --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.3);
+    --shadow-glow: 0 0 15px rgba(59, 130, 246, 0.4);
 }
 
-.Secondary {
-    color: rgb(0, 140, 255);
-}
-
-.BG-Primary {
-    background-color: rgb(36, 36, 36);
-}
-
-.BG-Secondary {
-    background-color: rgba(58, 58, 58);
-}
-
-.BG-Tertiary {
-    background-color: rgb(82, 82, 82);
-}
-
-.BG-Quarternary {
-    background-color: rgb(0, 140, 255);
-}
+/* Legacy Utility Classes (Mapping to new vars to prevent breakage while we migrate) */
+.Primary { color: var(--text-primary); }
+.Secondary { color: var(--text-secondary); }
+.BG-Primary { background-color: var(--bg-deep); }
+.BG-Secondary { background-color: var(--bg-surface); }
+.BG-Tertiary { background-color: var(--bg-elevated); }
+.BG-Quarternary { background: var(--gradient-primary); }
 

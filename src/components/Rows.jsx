@@ -15,9 +15,9 @@ function Rows({element, selectedTab}){
     const [oldLink, setOldLink] = useState('');
 
     const textRef = useRef();
-    const selector = element.is_selected ? "Row Primary Row-Selected BG-Primary" : "Row Primary BG-Primary";
-    const chks = element.is_selected ? "Chk BG-Quarternary" : "Chk";
-    const inputEditable = editable ? "Info-Link-Text  Primary BG-Secondary" : "Info-Link-Text BG-Secondary";
+    const selector = element.is_selected ? "Row Row-Selected" : "Row";
+    const chks = element.is_selected ? "Chk Chk-Selected" : "Chk";
+    const inputEditable = editable ? "Info-Link-Text Editable" : "Info-Link-Text";
 
     async function selectRow(id){
         invoke("toggle_one", { id });
@@ -110,15 +110,21 @@ function Rows({element, selectedTab}){
                     <div className='Icon-Cover' onClick={removeRow}>
                                     <FaCircleMinus />
                     </div>
-                    <div className='Icon-Cover' onClick={resumeRow}>
-                        {selectedTab.caption === "Cancelled" ? <FaRotateLeft /> : <FaRegCirclePlay />}
-                    </div>
-                    <div className='Icon-Cover' onClick={pauseRow}>
-                        <FaRegCirclePause />
-                    </div>
-                    <div className='Icon-Cover' onClick={cancelRow}>
-                        <FaRegCircleXmark/>
-                    </div>
+                    {["Paused", "Cancelled", "Failed"].includes(element.state) && (
+                        <div className='Icon-Cover' onClick={resumeRow}>
+                            {element.state === "Cancelled" ? <FaRotateLeft /> : <FaRegCirclePlay />}
+                        </div>
+                    )}
+                    {element.state === "Downloading" && (
+                        <div className='Icon-Cover' onClick={pauseRow}>
+                            <FaRegCirclePause />
+                        </div>
+                    )}
+                    {["Downloading", "Paused", "Failed"].includes(element.state) && (
+                        <div className='Icon-Cover' onClick={cancelRow}>
+                            <FaRegCircleXmark/>
+                        </div>
+                    )}
 
                 </div>
                 <div className='Row-Text'>{element.name}</div>
@@ -140,29 +146,39 @@ function Rows({element, selectedTab}){
                 }
                 {
                     info && <div className='Info'>
-                        <div>
-                            Location: {element.location}
+                        <div className='Info-Grid'>
+                            <div className='Info-Item'>
+                                <span className='Info-Label'>Location:</span>
+                                <span className='Info-Value'>{element.location}</span>
+                            </div>
+                            <div className='Info-Item'>
+                                <span className='Info-Label'>Downloaded:</span>
+                                <span className='Info-Value'>{formatSize(element.downloaded)}</span>
+                            </div>
+                            <div className='Info-Item'>
+                                <span className='Info-Label'>Total Size:</span>
+                                <span className='Info-Value'>{formatSize(element.total)}</span>
+                            </div>
+                            <div className='Info-Item'>
+                                <span className='Info-Label'>Started at:</span>
+                                <span className='Info-Value'>{formatStartTime(element.start_time)}</span>
+                            </div>
+                            <div className='Info-Item'>
+                                <span className='Info-Label'>Elapsed:</span>
+                                <span className='Info-Value'>{formatTime(element.elapsed)}</span>
+                            </div>
+                            <div className='Info-Item'>
+                                <span className='Info-Label'>Chunks:</span>
+                                <span className='Info-Value'>{element.parts ? element.parts.length : 0}</span>
+                            </div>
                         </div>
-                        <div>
-                            Downloaded: {formatSize(element.downloaded)}
-                        </div>
-                        <div>
-                            Total: {formatSize(element.total)}
-                        </div>
-                        <div>
-                            Started at: {formatStartTime(element.start_time)}
-                        </div>
-                        <div>
-                            Elapsed: {formatTime(element.elapsed)}
-                        </div>
-                        <div>Chunks: {element.parts ? element.parts.length : 0}</div>
                         <div className='Info-Link'>           
-                            <div>Link:</div>
+                            <span className='Info-Label'>Link:</span>
                             <input type="url" defaultValue={element.link} disabled={!editable} className={inputEditable} ref={textRef}/>
                             <div className='Info-Button' onClick={toggleEditable}><FaPencil /></div>
                             <div className='Info-Button' onClick={validate}><FaCheck /></div>
                         </div>
-                        {validity != "hidden" && <div className='Secondary'>
+                        {validity != "hidden" && <div className={`Info-Validity ${validity}`}>
                             {validity === "invalid" && "Invalid Link for this download"}
                             {validity === "checking" && "Checking link..."}
                         </div> }

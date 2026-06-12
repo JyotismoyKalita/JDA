@@ -3,7 +3,7 @@ import './Progress.css'
 function Progress({parts, total}){
     const sortedParts = parts ? [...parts].sort((a, b) => Number(a.start - b.start)) : [];
     return (
-        <div className='Progress-Cover BG-Secondary'>  
+        <div className='Progress-Cover'>  
             {sortedParts.map((part, index) => {
               const partSize = part.end - part.start + 1;
               if (partSize <= 0 || part.start >= 18446744073709551615) return null;
@@ -12,7 +12,7 @@ function Progress({parts, total}){
               
               return (
                 <div key={index} className='Progress-Div' style={{width: widthPct}}>
-                    <div className='Progress-Fill BG-Quarternary' style={{width: fillPct}}></div>
+                    <div className='Progress-Fill' style={{width: fillPct}}></div>
                 </div>
               );  
             })}
