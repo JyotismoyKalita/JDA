@@ -2,6 +2,7 @@ import './Add.css'
 import { FaRegPaste, FaFolderOpen } from 'react-icons/fa6';
 import { useRef } from 'react';
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { v4 as uuidv4 } from "uuid";
 import { useState, useEffect } from 'react';
 import {formatSize} from '../utils/format'
@@ -35,11 +36,11 @@ function Add({setAddScreen, txt, setTxt, serverPayload}){
             cookies: explicitCookies !== undefined ? explicitCookies : (cookies.length > 0 ? cookies : null),
             userAgent: explicitUserAgent !== undefined ? explicitUserAgent : (userAgent.length > 0 ? userAgent : null),
             referer: explicitReferer !== undefined ? explicitReferer : (referer.length > 0 ? referer : null)
-        }).catch(()=>{
+        }).catch((err)=>{
             verifyRef.current.style.backgroundColor = "";
+            return null;
         });
         if(!info){
-            verifyRef.current.style.backgroundColor = "";
             return;
         }
         const el = nameRef.current;
@@ -103,20 +104,19 @@ function Add({setAddScreen, txt, setTxt, serverPayload}){
         setAddScreen(false);
     }
 
+
+
     useEffect(() => {
         if (serverPayload) {
             setTimeout(() => {
-                const newCookies = serverPayload.cookie || "";
-                const newUserAgent = serverPayload.userAgent || "";
                 const newReferer = serverPayload.referer || "";
 
                 if (linkRef.current) linkRef.current.value = serverPayload.url || "";
                 if (nameRef.current) nameRef.current.value = serverPayload.name || "";
                 setSize(serverPayload.size || 0);
                 setResumeSupported(serverPayload.resume === "true");
-                setCookies(newCookies);
-                setUserAgent(newUserAgent);
                 setReferer(newReferer);
+                
                 if (serverPayload.resume !== "true") {
                     if (maxConnectionRef.current) {
                         maxConnectionRef.current.max = 1;
@@ -131,6 +131,10 @@ function Add({setAddScreen, txt, setTxt, serverPayload}){
 
                 if (nameRef.current) {
                     nameRef.current.focus();
+                }
+
+                if (serverPayload.url) {
+                    verify(serverPayload.cookie, serverPayload.userAgent, serverPayload.referer);
                 }
             }, 100);
             return;
@@ -174,7 +178,7 @@ function Add({setAddScreen, txt, setTxt, serverPayload}){
             <div className='Add-Row'>
                 Link:
                 <input type="url" className='Add-Text BG-Secondary Primary' ref={linkRef}/>
-                <div className="BG-Quarternary Add-Button" onClick={verify} ref={verifyRef}>Verify</div>
+                <div className="BG-Quarternary Add-Button" onClick={() => verify()} ref={verifyRef}>Verify</div>
                 <div className="BG-Quarternary Add-Button" onClick={pasteText}>
                     <FaRegPaste />
                 </div>

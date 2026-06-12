@@ -225,19 +225,6 @@ pub async fn worker(
             if let Some(c) = &cookies { req = req.header(reqwest::header::COOKIE, c); }
             if let Some(ua) = &user_agent {
                 req = req.header(reqwest::header::USER_AGENT, ua);
-                
-                // Extract Chrome version to match sec-ch-ua
-                let mut cv = "120";
-                if let Some(idx) = ua.find("Chrome/") {
-                    let rest = &ua[idx + 7..];
-                    if let Some(end) = rest.find('.') {
-                        cv = &rest[..end];
-                    }
-                }
-                
-                req = req.header("sec-ch-ua", format!("\"Google Chrome\";v=\"{0}\", \"Chromium\";v=\"{0}\", \"Not?A_Brand\";v=\"24\"", cv));
-                req = req.header("sec-ch-ua-mobile", "?0");
-                req = req.header("sec-ch-ua-platform", "\"Windows\"");
             }
             if let Some(ref_str) = &referer { 
                 if let Ok(val) = reqwest::header::HeaderValue::from_str(ref_str) {

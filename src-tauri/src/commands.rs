@@ -325,6 +325,7 @@ pub async fn verify_url(
 
     let mut head_req = client.head(parsed.to_string());
     if let Some(c) = &cookies { head_req = head_req.header(reqwest::header::COOKIE, c); }
+    if let Some(ua) = &user_agent { head_req = head_req.header(reqwest::header::USER_AGENT, ua); }
     if let Some(ref_str) = &referer { head_req = head_req.header(reqwest::header::REFERER, ref_str); }
     let head_resp = head_req.send().await;
 
@@ -332,6 +333,10 @@ pub async fn verify_url(
     let mut filename: Option<String> = None;
     let mut content_type: Option<String> = None;
     let mut final_url = parsed.clone();
+
+    if let Ok(resp) = &head_resp {
+        let status = resp.status();
+    }
 
     if let Ok(resp) = head_resp {
         if resp.status().is_success() {
@@ -360,23 +365,14 @@ pub async fn verify_url(
     if let Some(c) = &cookies { probe_req = probe_req.header(reqwest::header::COOKIE, c); }
     if let Some(ua) = &user_agent {
         probe_req = probe_req.header(reqwest::header::USER_AGENT, ua);
-        
-        let mut cv = "120";
-        if let Some(idx) = ua.find("Chrome/") {
-            let rest = &ua[idx + 7..];
-            if let Some(end) = rest.find('.') {
-                cv = &rest[..end];
-            }
-        }
-        probe_req = probe_req.header("sec-ch-ua", format!("\"Google Chrome\";v=\"{0}\", \"Chromium\";v=\"{0}\", \"Not?A_Brand\";v=\"24\"", cv));
-        probe_req = probe_req.header("sec-ch-ua-mobile", "?0");
-        probe_req = probe_req.header("sec-ch-ua-platform", "\"Windows\"");
     }
     if let Some(ref_str) = &referer { probe_req = probe_req.header(reqwest::header::REFERER, ref_str); }
     let probe = probe_req.send().await;
 
     let resume_supported = match &probe {
-        Ok(r) => r.status() == reqwest::StatusCode::PARTIAL_CONTENT,
+        Ok(r) => {
+            r.status() == reqwest::StatusCode::PARTIAL_CONTENT
+        },
         Err(_) => false,
     };
 
@@ -581,7 +577,7 @@ pub fn remove_download(state: tauri::State<Arc<DownloadState>>, id: String) {
     let mut list = state.list.write().unwrap();
 
     list.retain(|d| d.id != id);
-
     drop(list);
     broadcast(&state);
 }
+
