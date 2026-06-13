@@ -18,7 +18,7 @@ Built using **Rust** for the core engine and **Tauri** for a lightweight, native
 
 * **Multi-Threaded Engine:** Splits files into dynamic, parallel chunks to saturate your connection.
 * **"Stubborn Worker" Logic:** Advanced range-request detection that attempts parallel downloads even when servers don't explicitly broadcast support.
-* **Deep Link Integration:** Seamlessly intercepts downloads from Chrome/Edge via the custom `jda://` protocol.
+* **Browser Integration:** Seamlessly intercepts downloads from Chrome/Edge via a local HTTP server hosted by the JDA desktop app (falling back to a custom `jda://` protocol deep link if the server is unreachable).
 * **Smart Interception Toggle:** Control exactly when the accelerator is active via the companion browser extension.
 * **Pause & Resume:** Robust state management for interrupted or long-running downloads.
 * **Native Performance:** Zero-cost abstractions provided by Rust with a tiny resource footprint.
@@ -28,7 +28,7 @@ Built using **Rust** for the core engine and **Tauri** for a lightweight, native
 * **Backend:** [Rust](https://www.rust-lang.org/) (Core Logic & Tauri)
 * **Frontend:** [React](https://reactjs.org/)
 * **Desktop Framework:** [Tauri](https://tauri.app/) (v2.0)
-* **Communication:** Custom Protocol Handler (`jda://`)
+* **Communication:** Local HTTP Server (`http://127.0.0.1:14732/download`) with Custom Protocol (`jda://`) deep link fallback
 * **Storage:** `chrome.storage` (Extension side) & Local JSON (App side)
 
 ## Getting Started
@@ -72,7 +72,7 @@ To unlock the full potential of JDA, use the [JDA Browser Extension](https://git
 
 1. Load the extension from the `src` directory (unpacked mode).
 2. Toggle the accelerator to **Active**.
-3. Clicking any download link in your browser will now automatically trigger JDA via the deep-link protocol.
+3. Clicking any download link in your browser will now automatically hand over the request to JDA's local server (with deep-link fallback).
 
 ## Preview
 
