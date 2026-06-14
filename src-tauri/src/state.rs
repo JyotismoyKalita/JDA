@@ -15,6 +15,7 @@ pub fn broadcast(state: &Arc<DownloadState>) {
 
 pub fn save_state(app_handle: &tauri::AppHandle, state: &Arc<DownloadState>) {
     if let Ok(path) = app_handle.path().app_data_dir() {
+        let _ = std::fs::create_dir_all(&path);
         let file_path = path.join("downloads.json");
         let list = state.list.read().unwrap();
         if let Ok(json) = serde_json::to_string_pretty(&*list) {

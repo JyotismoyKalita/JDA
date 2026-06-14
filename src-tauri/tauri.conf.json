@@ -12,9 +12,9 @@
     "windows": [
       {
         "title": "JDA",
-        "width": 800,
+        "width": 825,
         "height": 600,
-        "minWidth": 600,
+        "minWidth": 825,
         "minHeight": 400,
         "resizable": true,
         "fullscreen": false,
