@@ -10,14 +10,14 @@
 
 ##  Overview
 
-**JDA** (Jyotismoy's Download Accelerator) is a modern download engine designed to maximize network throughput. Unlike standard browser download managers, JDA utilizes a **"Stubborn Worker" architecture**—insisting on multi-threaded parallel chunking even when server headers are ambiguous, ensuring you get the most out of your bandwidth.
+**JDA** (Jyotismoy's Download Accelerator) is a modern download engine designed to maximize network throughput. Unlike standard browser download managers, JDA utilizes a **Dynamic Chunking architecture**—dynamically splitting active chunks among worker threads to ensure no thread sits idle, maximizing network throughput and ensuring you get the most out of your bandwidth.
 
 Built using **Rust** for the core engine and **Tauri** for a lightweight, native GUI experience, JDA is fast, memory-efficient, and privacy-focused.
 
 ## Key Features
 
-* **Multi-Threaded Engine:** Splits files into dynamic, parallel chunks to saturate your connection.
-* **"Stubborn Worker" Logic:** Advanced range-request detection that attempts parallel downloads even when servers don't explicitly broadcast support.
+* **Dynamic Chunking Engine:** Splits files into parallel chunks, dynamically redistributing remaining workloads by splitting active chunks when workers complete their tasks to ensure maximum bandwidth saturation.
+* **Smart Range Probing:** Performs range-request detection to determine support for parallel downloads and file splitting.
 * **Browser Integration:** Seamlessly intercepts downloads from Chrome/Edge via a local HTTP server hosted by the JDA desktop app (falling back to a custom `jda://` protocol deep link if the server is unreachable).
 * **Smart Interception Toggle:** Control exactly when the accelerator is active via the companion browser extension.
 * **Pause & Resume:** Robust state management for interrupted or long-running downloads.
